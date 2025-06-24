@@ -1,0 +1,5 @@
+python ros_raft_node.py --restore_ckpt models/sceneflow.pth --camera_params ../../config/params_stereo_left_deep.yaml --valid_iters 8 --shared_backbone --corr_implementation reg_cuda --mixed_precision --slow_fast_gru
+
+
+
+python export_onnx.py --restore_ckpt models/sceneflow.pth --valid_iters 8 --shared_backbone --corr_implementation reg_cuda --slow_fast_gru
