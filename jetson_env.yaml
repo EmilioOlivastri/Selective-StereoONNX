@@ -1,0 +1,19 @@
+name: selectiveRaft_jetson
+channels:
+  - pytorch
+  - bioconda
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8.10
+  - pip
+  - cudatoolkit
+  - matplotlib
+  - tensorboard
+  - scipy
+  - opencv
+  - tqdm
+  - opt_einsum
+  - imageio
+  - scikit-image
+  - p7zip
