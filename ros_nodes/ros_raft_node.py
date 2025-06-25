@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'core')))
-
 import argparse
 import yaml
-import struct
 import time
 
 import cv2
@@ -20,8 +15,12 @@ from sensor_msgs.msg import PointCloud2 as PointCloud2Msg
 from sensor_msgs.msg import PointField
 from sensor_msgs import point_cloud2
 
-from core.raft import RAFT
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.utils.utils import InputPadder
+from core.raft import RAFT
+sys.path.pop()
 
 torch.backends.cudnn.benchmark = True
 
