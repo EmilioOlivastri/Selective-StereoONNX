@@ -69,7 +69,6 @@ def unproject(image, disparity, camera_params):
     a = np.full((rgb.shape[0],), 255, dtype=np.uint8)
     r, g, b = rgb[:, 2], rgb[:, 1], rgb[:, 0]  # BGR to RGB
     rgba = (a.astype(np.uint32) << 24) | (r.astype(np.uint32) << 16) | (g.astype(np.uint32) << 8) | b.astype(np.uint32)
-    rgba_f32 = rgba.view(np.float32)
     
     # Combine all fields into final Nx4 array
     points = list(zip(x.tolist(), y.tolist(), z.tolist(), rgba.tolist()))
@@ -118,8 +117,8 @@ class RosStereoWrapper:
     print(f'Warming-up terminated! Last inference speed: {self.model.last_inference_time():.3f} s')
 
     self.resize_factor = 4  # Resize factor for input images
-    self.left_params = create_params_dict(f'{self.args.camera_folder}/stereo_left.yaml')
-    self.right_params = create_params_dict(f'{self.args.camera_folder}/stereo_right.yaml')
+    self.left_params = create_params_dict(f'{self.args.camera_folder}/stereo_left_air.yaml')
+    self.right_params = create_params_dict(f'{self.args.camera_folder}/stereo_right_air.yaml')
     
     self.left_left_sub = mf.Subscriber(f'/stereo/stereo_left/left/image_rect', ImageMsg)
     self.left_right_sub = mf.Subscriber(f'/stereo/stereo_left/right/image_rect', ImageMsg)

@@ -24,20 +24,27 @@ sys.path.pop()
 
 torch.backends.cudnn.benchmark = True
 
-
-# Project points in 3D
-def unproject(image, disparity, camera_params, factor=4.0): 
-
-    with open(camera_params, 'r') as f:
+def create_params_dict(camera_yaml, factor=4.0):
+    camera_params = {}
+    with open(camera_yaml, 'r') as f:
         stero_params = yaml.safe_load(f)
 
     inv_res = 1.0 / float(factor) 
-    fx1 = float(stero_params['fx1']) * inv_res
-    fy1 = float(stero_params['fy1']) * inv_res
-    cx1 = float(stero_params['cx1']) * inv_res
-    cy1 = float(stero_params['cy1']) * inv_res
-    cx2 = float(stero_params['cx2']) * inv_res
-    baseline = float(stero_params['baseline'])
+    camera_params['fx1'] = float(stero_params['fx1']) * inv_res
+    camera_params['fy1'] = float(stero_params['fy1']) * inv_res
+    camera_params['cx1'] = float(stero_params['cx1']) * inv_res
+    camera_params['cy1'] = float(stero_params['cy1']) * inv_res
+    camera_params['cx2'] = float(stero_params['cx2']) * inv_res
+    camera_params['baseline'] = float(stero_params['baseline'])
+
+    return camera_params
+
+# Project points in 3D
+def unproject(image, disparity, camera_params): 
+
+    fx1, fy1 = camera_params['fx1'], camera_params['fy1']
+    cx1, cy1 = camera_params['cx1'], camera_params['cy1']
+    cx2, baseline = camera_params['cx2'], camera_params['baseline']
 
     # Transform disparity in meters
     h, w = disparity.shape
@@ -45,34 +52,29 @@ def unproject(image, disparity, camera_params, factor=4.0):
     
     # Projection into 3D
     xx, yy = np.meshgrid(np.arange(w), np.arange(h))
-    points_grid = np.stack(((xx-cx1)/fx1, (yy-cy1)/fy1, np.ones_like(xx)), axis=0) * depth
+    x = (xx - cx1) * depth / fx1
+    y = (yy - cy1) * depth / fy1
+    z = depth
 
     # Remove flying points
     mask = np.ones((h, w), dtype=bool)
     mask[1:][np.abs(depth[1:] - depth[:-1]) > 1] = False
     mask[:,1:][np.abs(depth[:,1:] - depth[:,:-1]) > 1] = False
     
-    points3D = points_grid.transpose(1,2,0)[mask]
-    colors = image[mask]
+    x, y, z = x[mask], y[mask], z[mask]
+    rgb = image[mask]
 
-    points3D = points3D.reshape(-1, 3)
-    colors = colors.reshape(-1, 3)
-
-    # Create point cloud message
-    pointcloud = []
-    for i in range(points3D.shape[0]):
-        a = 255
-        b, g, r = colors[i][0], colors[i][1], colors[i][2]
-        x, y, z = points3D[i][0], points3D[i][1], points3D[i][2]
-        rgb = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
-        pt = [x, y, z, rgb]
-        pointcloud.append(pt)
+    # Pack RGB into uint32 using NumPy
+    a = np.full((rgb.shape[0],), 255, dtype=np.uint8)
+    r, g, b = rgb[:, 2], rgb[:, 1], rgb[:, 0]  # BGR to RGB
+    rgba = (a.astype(np.uint32) << 24) | (r.astype(np.uint32) << 16) | (g.astype(np.uint32) << 8) | b.astype(np.uint32)
+    
+    # Combine all fields into final Nx4 array
+    points = list(zip(x.tolist(), y.tolist(), z.tolist(), rgba.tolist()))
 
     pointcloud_msg = PointCloud2Msg()
     pointcloud_msg.header.stamp = rospy.Time.now()
     pointcloud_msg.header.frame_id = "camera_frame"
-    pointcloud_msg.height = 1
-    pointcloud_msg.width = points3D.shape[0]
 
     pointcloud_msg.fields = [
         PointField(name='x', offset=0, datatype=PointField.FLOAT32, count=1),
@@ -80,7 +82,7 @@ def unproject(image, disparity, camera_params, factor=4.0):
         PointField(name='z', offset=8, datatype=PointField.FLOAT32, count=1),
         PointField(name='rgba', offset=12, datatype=PointField.UINT32, count=1)
     ]
-    pointcloud_msg = point_cloud2.create_cloud(pointcloud_msg.header, pointcloud_msg.fields, pointcloud)
+    pointcloud_msg = point_cloud2.create_cloud(pointcloud_msg.header, pointcloud_msg.fields, points)
     return pointcloud_msg
 
 def load_image(image, device):
@@ -108,6 +110,8 @@ class RosStereoWrapper:
     for param in self.model.parameters():
         param.grad = None
     
+    self.camera_params = create_params_dict(f'{self.args.camera_params}')
+
     self.left_sub = mf.Subscriber(f'/stereo/{args.stereo_rig}/left/image_rect', ImageMsg)
     self.right_sub = mf.Subscriber(f'/stereo/{args.stereo_rig}/right/image_rect', ImageMsg)
     
@@ -175,16 +179,16 @@ class RosStereoWrapper:
       
       print(f"Inference time [{self.side}]: {inference_time - padding_time}")
 
-      np_flowup = flow_up.detach().cpu().numpy().squeeze()
-      print(f'FLOWUP SHAPE: {np_flowup.shape}')
+      np_flowup = flow_up.detach().cpu().numpy().squeeze()  
       del flow_up
       del left_img_torch
       del right_img_torch
       torch.cuda.empty_cache()
       
-      self.disp_pub.publish(self.cv2_to_imgmsg(np_flowup, encoding="passthrough"))
+      disp = -np_flowup.copy().astype(np.int8)
+      self.disp_pub.publish(self.cv2_to_imgmsg(disp, encoding="mono8"))
 
-      pt_cloud_msg = unproject(left_img, np_flowup, self.args.camera_params, self.resize_factor)
+      pt_cloud_msg = unproject(left_img, np_flowup, self.camera_params)
       pt_cloud_msg.header.stamp = left_img_msg.header.stamp
       pt_cloud_msg.header.frame_id = left_img_msg.header.frame_id
       self.pointcloud_pub.publish(pt_cloud_msg)

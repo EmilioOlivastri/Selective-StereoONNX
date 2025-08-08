@@ -19,11 +19,10 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.utils.utils import InputPadder
-from core.raft import RAFT
+from core_onnx.raft import RAFTONNX
 sys.path.pop()
 
 torch.backends.cudnn.benchmark = True
-
 
 
 def create_params_dict(camera_yaml, factor=4.0):
@@ -102,7 +101,7 @@ class RosStereoWrapper:
     self.args = args
     self.device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Loading stereo model on device: ", self.device)
-    self.model = torch.nn.DataParallel(RAFT(args), device_ids=[0])
+    self.model = torch.nn.DataParallel(RAFTONNX(args), device_ids=[0])
     self.model.load_state_dict(torch.load(args.restore_ckpt, weights_only=True))
     self.model = self.model.module
 
