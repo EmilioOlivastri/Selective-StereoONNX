@@ -70,7 +70,6 @@ def unproject(image, disparity, camera_params):
     a = np.full((rgb.shape[0],), 255, dtype=np.uint8)
     r, g, b = rgb[:, 2], rgb[:, 1], rgb[:, 0]  # BGR to RGB
     rgba = (a.astype(np.uint32) << 24) | (r.astype(np.uint32) << 16) | (g.astype(np.uint32) << 8) | b.astype(np.uint32)
-    rgba_f32 = rgba.view(np.float32)
     
     # Combine all fields into final Nx4 array
     points = list(zip(x.tolist(), y.tolist(), z.tolist(), rgba.tolist()))
