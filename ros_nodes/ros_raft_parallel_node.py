@@ -117,9 +117,9 @@ class RosStereoWrapper:
     for param in self.model.parameters():
         param.grad = None
 
-    self.left_params = create_params_dict(f'{self.args.camera_folder}/stereo_left.yaml')
-    self.right_params = create_params_dict(f'{self.args.camera_folder}/stereo_right.yaml')
-    
+    self.left_params = create_params_dict(f'{self.args.camera_folder}/stereo_left2_water.yaml')
+    self.right_params = create_params_dict(f'{self.args.camera_folder}/stereo_right2_water.yaml')
+
     self.left_left_sub = mf.Subscriber(f'/stereo/stereo_left/left/image_rect', ImageMsg)
     self.left_right_sub = mf.Subscriber(f'/stereo/stereo_left/right/image_rect', ImageMsg)
     self.right_left_sub = mf.Subscriber(f'/stereo/stereo_right/left/image_rect', ImageMsg)

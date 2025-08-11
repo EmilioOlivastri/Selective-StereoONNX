@@ -117,9 +117,9 @@ class RosStereoWrapper:
     print(f'Warming-up terminated! Last inference speed: {self.model.last_inference_time():.3f} s')
 
     self.resize_factor = 4  # Resize factor for input images
-    self.left_params = create_params_dict(f'{self.args.camera_folder}/stereo_left_air.yaml')
-    self.right_params = create_params_dict(f'{self.args.camera_folder}/stereo_right_air.yaml')
-    
+    self.left_params = create_params_dict(f'{self.args.camera_folder}/stereo_left2_water.yaml')
+    self.right_params = create_params_dict(f'{self.args.camera_folder}/stereo_right2_water.yaml')
+
     self.left_left_sub = mf.Subscriber(f'/stereo/stereo_left/left/image_rect', ImageMsg)
     self.left_right_sub = mf.Subscriber(f'/stereo/stereo_left/right/image_rect', ImageMsg)
     self.right_left_sub = mf.Subscriber(f'/stereo/stereo_right/left/image_rect', ImageMsg)
